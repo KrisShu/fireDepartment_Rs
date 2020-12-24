@@ -122,7 +122,6 @@ export default {
             areaoptions:'',
             areavalue:'融水',
             spotArray:[],
-            massMarks:{},//海量图层
             echarts_oneDom:{},//隐患及超限echarts载体
             echarts_twoDom:{},//警情类型echarts载体
             echarts_safeElectricdom:{},//安全用电echarts载体
@@ -220,39 +219,35 @@ export default {
         },
         //地图点标记
         makeMark(areaId){
-            this.$axios.get(this.$api.GetFireUnitLngLatByArea,
+            this.$axios.get(this.$api.GetFireUnitLatByArea,
                 {params:{areaId}}
             ).then(res=>{
-                // console.log("获取的点位",res)
+                console.log("获取的点位",res)
                 this.spots =res.result;
-                var styleObject = {
-                    url: '//datav.oss-cn-hangzhou.aliyuncs.com/uploads/images/32a60b3e7d599f983aa1a604fb640d7e.gif',  // 图标地址
-                    size: new AMap.Size(12,12),      // 图标大小
-                    anchor: new AMap.Pixel(5,5) // 图标显示位置偏移量，基准点为图标左上角
+                // this.spotArray =[];
+                let icon = new AMap.Icon({
+                    size: new AMap.Size(40, 50), // 图标尺寸
+                    image:
+                        "//datav.oss-cn-hangzhou.aliyuncs.com/uploads/images/32a60b3e7d599f983aa1a604fb640d7e.gif" // Icon的图像
+                });
+                for (let item of  this.spots) {
+                    let marker = new AMap.Marker({
+                        position: new AMap.LngLat(item.lng, item.lat), // 经纬度对象，也可以是经纬度构成的一维数组[116.39, 39.9]
+                        title: item.fireunitId,
+                        offset: new AMap.Pixel(-10, -10),
+                        icon: icon
+                    });
+                    marker.item = item; // 自定义参数
+                    marker.on('click',this.getMapMarkInfo)
+                    this.spotArray.push(marker);
                 }
-    
-                this.massMarks = new AMap.MassMarks(this.spots,{
-                    zIndex: 111,  // 海量点图层叠加的顺序
-                    zooms: [3, 19],  // 在指定地图缩放级别范围内展示海量点图层
-                    style: styleObject,  // 设置样式对象
-                    cursor: 'pointer'//设置
-                });
-                this.massMarks.on('click', (e)=> {//给海量点位添加点击事件
-                   this.getMapMarkInfo(e)
-                });
-                
-                this.massMarks.setData(this.spots);
-
-                // 将海量点添加至地图实例
-                this.massMarks.setMap(this.mapObj);
-
-
-               
+                 console.log(this.spotArray)
+                 this.mapObj.add(this.spotArray);
             })    
         },
         getMapMarkInfo(item){
             console.log("获取电文坐标",item)
-            let Id = item ? item.data.fireunitId: "";
+            let Id = item ? item.target.item.fireunitId: "";
             this.$axios.get(this.$api.GetFireUnitInfo,
                 {params:{UserId:this.$store.state.userInfo.userId,Id}}
             ).then(res=>{
@@ -267,7 +262,7 @@ export default {
                     content: this.createInfoWindow(title, content.join("<br/>"),res.result.id),
                     offset: new AMap.Pixel(16, -45)
                 }); 
-                this.infoWindow.open(this.mapObj, [item.data.lnglat.lng,item.data.lnglat.lat]);
+                this.infoWindow.open(this.mapObj, [item.target.item.lng,item.target.item.lat]);
             })
         },
         dealTime:(val)=>{
